@@ -53,11 +53,12 @@ metadata {
 
         preferences {
 
-            	input name: "openLevel", type: "number", defaultValue: 0, range: "0..100", title: "Max open level",
-                description: "Max percentage open when Open function is called\n" +
+                input name: "openLevel", type: "number", defaultValue: 0, range: "0..100", title: "Max open level",
+                             description: "Max percentage open when Open function is called\n" +
                              "(delete or set value to 0 to disable this)"
-		input name: "debugOutput", type: "bool", title: "Enable debug logging?", defaultValue: true
-		input name: "descTextOutput", type: "bool", title: "Enable descriptionText logging?", defaultValue: true
+                input name: "debugOutput", type: "bool", title: "Enable debug logging?", defaultValue: true
+                input name: "descTextOutput", type: "bool", title: "Enable descriptionText logging?", defaultValue: true
+                input name: "autoRefreshHours", type: "number", title: "Periodic refresh interval (hours)", defaultValue: 3, range: "1..24"
         }
   
 }
@@ -216,8 +217,15 @@ def setPosition(value){
 }
 
 def updated() {
-	unschedule()
-	if (debugOutput) runIn(1800,logsOff)
+        unschedule()
+        def hours = autoRefreshHours ?: 3
+        schedule("0 0 */${hours} * * ?", refresh)
+        refresh()
+        if (debugOutput) runIn(1800,logsOff)
+}
+
+def installed() {
+        updated()
 }
 
 def logsOff(){
