@@ -31,7 +31,7 @@
 import hubitat.zigbee.zcl.DataType
 
 metadata {
-    definition(name: "IKEA Window Blinds", namespace: "a4refillpad", author: "Wayne Man") {
+    definition(name: "IKEA Window Blinds", namespace: "rudyscoggins", author: "Wayne Man") {
         capability "Actuator"
         capability "Configuration"
         capability "Refresh"
