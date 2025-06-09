@@ -145,12 +145,16 @@ def updateFinalState() {
 def close() {
     if (descTextOutput) log.info "close()"
     runIn(5, refresh)
+    def now = new Date().format("yyyy MMM dd EEE h:mm:ss a", location.timeZone)
+    sendEvent(name: "lastOpened", value: now)
     zigbee.command(CLUSTER_WINDOW_COVERING, COMMAND_CLOSE)
 }
 
 def open() {
     if (descTextOutput) log.info "open()"
     runIn(5, refresh)
+    def now = new Date().format("yyyy MMM dd EEE h:mm:ss a", location.timeZone)
+    sendEvent(name: "lastOpened", value: now)
     if (openLevel) {
         setLevel(openLevel)
     } else {
