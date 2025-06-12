@@ -232,7 +232,17 @@ def installed() {
         updated()
 }
 
+def ping() {
+        if (descTextOutput) log.info "ping()"
+        return refresh()
+}
+
+def initialize() {
+        if (descTextOutput) log.info "initialize()"
+        updated()
+}
+
 def logsOff(){
-	log.warn "debug logging disabled..."
-	device.updateSetting("debugOutput",[value:"false",type:"bool"])
+        log.warn "debug logging disabled..."
+        device.updateSetting("debugOutput",[value:"false",type:"bool"])
 }
