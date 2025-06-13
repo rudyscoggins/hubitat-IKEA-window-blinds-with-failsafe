@@ -72,6 +72,8 @@ private getCOMMAND_GOTO_LIFT_PERCENTAGE() { 0x05 }
 private getATTRIBUTE_POSITION_LIFT() { 0x0008 }
 private getATTRIBUTE_CURRENT_LEVEL() { 0x0000 }
 private getCOMMAND_MOVE_LEVEL_ONOFF() { 0x04 }
+private getMAX_RETRY_ATTEMPTS() { 2 }
+private getRETRY_CHECK_DELAY() { 15 }
 
 private List<Map> collectAttributes(Map descMap) {
 	List<Map> descMaps = new ArrayList<Map>()
@@ -142,11 +144,44 @@ def updateFinalState() {
     sendEvent(name: "switch", value: level == 0 ? "off" : "on", displayed: false)
 }
 
+private def startRetry(String type) {
+    state.retryType = type
+    state.retryAttempts = 0
+    state.retryLevel = device.currentValue("level") as Integer ?: 0
+    unschedule('verifyMovement')
+    runIn(RETRY_CHECK_DELAY, 'verifyMovement', [overwrite:true])
+}
+
+def verifyMovement() {
+    Integer current = device.currentValue("level") as Integer ?: 0
+    if (debugOutput) log.debug "verifyMovement: type=${state.retryType} attempt=${state.retryAttempts} current=${current} initial=${state.retryLevel}"
+    if (current == state.retryLevel && state.retryAttempts < MAX_RETRY_ATTEMPTS) {
+        state.retryAttempts = state.retryAttempts + 1
+        if (descTextOutput) log.info "Retrying ${state.retryType} command (${state.retryAttempts}/${MAX_RETRY_ATTEMPTS})"
+        if (state.retryType == 'open') {
+            if (openLevel) {
+                zigbee.command(CLUSTER_WINDOW_COVERING, COMMAND_GOTO_LIFT_PERCENTAGE, zigbee.convertToHexString(100 - openLevel, 2))
+            } else {
+                zigbee.command(CLUSTER_WINDOW_COVERING, COMMAND_OPEN)
+            }
+        } else if (state.retryType == 'close') {
+            zigbee.command(CLUSTER_WINDOW_COVERING, COMMAND_CLOSE)
+        }
+        runIn(5, refresh)
+        runIn(RETRY_CHECK_DELAY, 'verifyMovement', [overwrite:true])
+    } else {
+        state.remove('retryType')
+        state.remove('retryAttempts')
+        state.remove('retryLevel')
+    }
+}
+
 def close() {
     if (descTextOutput) log.info "close()"
     runIn(5, refresh)
     def now = new Date().format("yyyy MMM dd EEE h:mm:ss a", location.timeZone)
     sendEvent(name: "lastOpened", value: now)
+    startRetry('close')
     zigbee.command(CLUSTER_WINDOW_COVERING, COMMAND_CLOSE)
 }
 
@@ -155,6 +190,7 @@ def open() {
     runIn(5, refresh)
     def now = new Date().format("yyyy MMM dd EEE h:mm:ss a", location.timeZone)
     sendEvent(name: "lastOpened", value: now)
+    startRetry('open')
     if (openLevel) {
         setLevel(openLevel)
     } else {
