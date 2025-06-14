@@ -41,6 +41,8 @@ metadata {
 	capability "Switch Level"
         capability "Battery"
 
+        attribute "batteryAlert", "string"
+
         command "pause"
         command "hardOpen"
         
@@ -59,6 +61,8 @@ metadata {
                 input name: "debugOutput", type: "bool", title: "Enable debug logging?", defaultValue: true
                 input name: "descTextOutput", type: "bool", title: "Enable descriptionText logging?", defaultValue: true
                 input name: "autoRefreshHours", type: "number", title: "Periodic refresh interval (hours)", defaultValue: 3, range: "1..24"
+                input name: "batteryRefreshHours", type: "number", title: "Battery refresh interval (hours)", defaultValue: 6, range: "1..24"
+                input name: "lowBatteryThreshold", type: "number", title: "Low battery notification threshold (%)", defaultValue: 20, range: "1..100"
         }
   
 }
@@ -106,7 +110,9 @@ def parse(String description) {
         } 
         if (descMap?.clusterInt == CLUSTER_BATTERY_LEVEL && descMap.value) {
             if (debugOutput) log.debug "attr: ${descMap?.attrInt}, value: ${descMap?.value}, descValue: ${Integer.parseInt(descMap.value, 16)}"
-            sendEvent(name: "battery", value: Integer.parseInt(descMap.value, 16), unit: "%")
+            def bat = Integer.parseInt(descMap.value, 16)
+            sendEvent(name: "battery", value: bat, unit: "%")
+            checkBatteryThreshold(bat)
         }
     }
 }
@@ -176,6 +182,22 @@ def verifyMovement() {
     }
 }
 
+def checkBatteryThreshold(val) {
+    def threshold = lowBatteryThreshold ?: 20
+    if (val < threshold) {
+        if (!state.batteryNotified) {
+            if (descTextOutput) log.warn "Battery level ${val}% is below threshold ${threshold}%"
+            sendEvent(name: "batteryAlert", value: "low")
+            state.batteryNotified = true
+        }
+    } else {
+        if (state.batteryNotified) {
+            sendEvent(name: "batteryAlert", value: "ok")
+            state.batteryNotified = false
+        }
+    }
+}
+
 def close() {
     if (descTextOutput) log.info "close()"
     runIn(5, refresh)
@@ -234,11 +256,16 @@ def pause() {
 
 def refresh() {
     if (descTextOutput) log.info "refresh()"
-    
+
     def cmds
-    cmds = zigbee.readAttribute(CLUSTER_WINDOW_COVERING, ATTRIBUTE_POSITION_LIFT) + zigbee.readAttribute(CLUSTER_BATTERY_LEVEL, 0x0021) 
+    cmds = zigbee.readAttribute(CLUSTER_WINDOW_COVERING, ATTRIBUTE_POSITION_LIFT) + zigbee.readAttribute(CLUSTER_BATTERY_LEVEL, 0x0021)
 
     return cmds
+}
+
+def refreshBattery() {
+    if (descTextOutput) log.info "refreshBattery()"
+    zigbee.readAttribute(CLUSTER_BATTERY_LEVEL, 0x0021)
 }
 
 def configure() {
@@ -260,7 +287,10 @@ def updated() {
         unschedule()
         def hours = autoRefreshHours ?: 3
         schedule("0 0 */${hours} * * ?", refresh)
+        def battHours = batteryRefreshHours ?: 6
+        schedule("0 15 */${battHours} * * ?", refreshBattery)
         refresh()
+        refreshBattery()
         if (debugOutput) runIn(1800,logsOff)
 }
 
