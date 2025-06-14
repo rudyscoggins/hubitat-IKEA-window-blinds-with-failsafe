@@ -1,9 +1,9 @@
 {
   "packageName": "IKEA Window Blinds",
   "author": "Wayne Man",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "minimumHEVersion": "2.1.9",
-  "dateReleased": "2020-09-09",
+  "dateReleased": "2025-06-14",
   "drivers": [
     {
       "id": "69d97ae9-b9ab-4e4d-be4f-5f3b3162e147",

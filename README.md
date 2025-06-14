@@ -22,5 +22,6 @@ This repository provides a Hubitat driver for controlling IKEA FYRTUR and TREDAN
 ## Usage
 - Use the provided commands to open, close, pause, or set the position of the blinds.
 - The driver includes periodic refresh and battery reporting.
+- Configurable battery refresh interval and low battery notifications.
 
 This code is distributed under the Apache 2.0 license as noted in the driver header.
